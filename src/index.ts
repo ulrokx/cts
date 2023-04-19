@@ -7,8 +7,10 @@ const sourceFromFile = (filename: string) => {
 
 const main = () => {
     const source = sourceFromFile("./samples/hello.c")
-    const tokens = new Lexer(source).lex();
+    const lexer = new Lexer(source)
+    const tokens = lexer.lex()
     console.log(tokens)
+    console.log(lexer.error)
 }
 
 main();

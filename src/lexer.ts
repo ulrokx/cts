@@ -48,6 +48,18 @@ export default class Lexer {
     return this.source[this.cursor];
   }
 
+  identifier() {
+    while (this.isAlphaNumeric(this.peek())) {}
+    const literal = this.source.slice(this.cursor, this.peeker);
+    this.cursor = this.peeker;
+    const keyword = stringToKeyword[literal];
+    if (keyword) {
+      this.tokens.push(new Token(keyword));
+      return;
+    }
+    this.tokens.push(new Token(TokenType.IDENTIFIER, literal));
+  }
+
   stringLiteral() {
     const quote = this.current();
     while (this.peek() !== quote) {}
@@ -79,6 +91,28 @@ export default class Lexer {
     return { token: TokenType.FLOAT_LITERAL, literal: parseFloat(literal) };
   }
 
+  preprocessor() {
+    while (this.peek() !== "\n") {}
+    const directive = this.source.slice(this.cursor, this.peeker);
+    const [command, ...args] = directive.split(" ");
+    if (command === "#include") {
+      this.tokens.push(new Token(TokenType.PPD_INCLUDE, args[0]));
+    }
+    else if (command === "#define") {
+      if(args.length !== 2) {
+        this.error = `Invalid number of arguments for #define at line ${this.line}` 
+        return;
+      }
+      this.tokens.push(new Token(TokenType.PPD_DEFINE, args[0], args[1]));
+    }
+    else {
+      this.error = `Invalid preprocessor directive at line ${this.line}`;
+      return;
+    }
+    this.peeker++;
+    this.cursor = this.peeker;
+  }
+
   isNumeric(char?: string) {
     const charCode = char ? char.charCodeAt(0) : this.current()?.charCodeAt(0);
     return charCode && charCode >= 48 && charCode <= 57;
@@ -86,9 +120,22 @@ export default class Lexer {
 
   isAlphaNumeric(char?: string) {
     const charCode = char ? char.charCodeAt(0) : this.current()?.charCodeAt(0);
-    return charCode && ((charCode >= 48 && charCode <= 57) || (charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122));
+    return (
+      charCode &&
+      ((charCode >= 48 && charCode <= 57) ||
+        (charCode >= 65 && charCode <= 90) ||
+        (charCode >= 97 && charCode <= 122))
+    );
   }
 
+  isAlpha(char?: string) {
+    const charCode = char ? char.charCodeAt(0) : this.current()?.charCodeAt(0);
+    return (
+      charCode &&
+      ((charCode >= 65 && charCode <= 90) ||
+        (charCode >= 97 && charCode <= 122))
+    );
+  }
   token() {
     if (this.cursor >= this.length) {
       this.eof = true;
@@ -96,6 +143,10 @@ export default class Lexer {
     }
     const char = this.current();
     if (!char) return;
+    if (char === "#") {
+      this.preprocessor();
+      return;
+    }
     if (this.isWhiteSpace(char)) {
       this.increment();
       if (char === "\n") {
@@ -116,17 +167,8 @@ export default class Lexer {
       this.increment();
       return;
     }
-    if (this.isAlphaNumeric()) {
-      let literal = "";
-      while (this.isAlphaNumeric(this.peek())) {
-        literal += this.current();
-        this.increment();
-      }
-      if (stringToKeyword[literal]) {
-        this.tokens.push(new Token(stringToKeyword[literal]));
-        return;
-      }
-      this.tokens.push(new Token(TokenType.IDENTIFIER, literal));
+    if (this.isAlpha()) {
+      this.identifier();
       return;
     }
     if (this.isNumeric() || char === ".") {
