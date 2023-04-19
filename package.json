@@ -2,14 +2,14 @@
   "name": "cts",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
   "main": "main.js",
   "scripts": {
-    "start": "node main.js"
+    "start": "tsc && node dist/index.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^18.15.11"
+    "@types/node": "^18.15.11",
+    "typescript": "^5.0.4"
   }
 }
